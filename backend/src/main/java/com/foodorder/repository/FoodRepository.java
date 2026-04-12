@@ -10,5 +10,5 @@ import com.foodorder.model.Food;
 @Repository
 public interface FoodRepository extends JpaRepository<Food, Long> {
     List<Food> findByCategory_Id(Long categoryId);
-    List<Food> findByAvailableTrue();
+    List<Food> findByAvailableTrueAndStockQuantityGreaterThan(Integer stockQuantity);
 }

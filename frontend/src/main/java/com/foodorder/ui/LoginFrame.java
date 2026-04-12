@@ -5,9 +5,6 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -20,7 +17,14 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import com.foodorder.client.ApiClient;
+import com.foodorder.model.LoginRequestModel;
+import com.foodorder.model.LoginResponse;
+import com.foodorder.model.UserSession;
+
 public class LoginFrame extends JFrame {
+    private final ApiClient apiClient = new ApiClient();
+
     private JTextField emailField;
     private JPasswordField passwordField;
     private JButton loginButton;
@@ -48,51 +52,41 @@ public class LoginFrame extends JFrame {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        // Title
         JLabel titleLabel = new JLabel("Đặt Đồ Ăn Online", loadIcon("/icons/app.png"), SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
         titleLabel.setIconTextGap(10);
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         gbc.gridwidth = 2;
         panel.add(titleLabel, gbc);
 
-        // Email
         gbc.gridwidth = 1;
-        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         panel.add(new JLabel("Email:"), gbc);
         emailField = new JTextField(20);
         gbc.gridx = 1;
         panel.add(emailField, gbc);
 
-        // Password
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.gridy = 2;
         panel.add(new JLabel("Mật khẩu:"), gbc);
         passwordField = new JPasswordField(20);
         gbc.gridx = 1;
         panel.add(passwordField, gbc);
 
-        // Buttons
         loginButton = new JButton("Đăng Nhập");
         loginButton.setBackground(new Color(255, 87, 34));
         loginButton.setForeground(Color.WHITE);
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0;
+        gbc.gridy = 3;
         panel.add(loginButton, gbc);
 
         registerButton = new JButton("Đăng Ký");
         gbc.gridx = 1;
         panel.add(registerButton, gbc);
 
-        // Actions
-        loginButton.addActionListener(e -> {
-            String email = emailField.getText();
-            String password = new String(passwordField.getPassword());
-            if (validateLogin(email, password)) {
-                new MainFrame().setVisible(true);
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Email hoặc mật khẩu không đúng!");
-            }
-        });
+        loginButton.addActionListener(e -> login());
 
         registerButton.addActionListener(e -> {
             new RegisterFrame().setVisible(true);
@@ -102,24 +96,38 @@ public class LoginFrame extends JFrame {
         add(panel);
     }
 
-    private boolean validateLogin(String email, String password) {
-        try (Scanner scanner = new Scanner(new File("users.txt"))) {
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                String[] parts = line.split(",");
-                if (parts.length >= 2 && parts[0].equals(email) && parts[1].equals(password)) {
-                    return true;
-                }
-            }
-        } catch (FileNotFoundException e) {
-            return false;
+    private void login() {
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword());
+
+        if (email.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Email và mật khẩu không được để trống!");
+            return;
         }
-        return false;
+
+        try {
+            LoginResponse response = apiClient.post("/auth/login", new LoginRequestModel(email, password), LoginResponse.class);
+            UserSession.getInstance().setUser(
+                    response.getUserId(),
+                    response.getFullName(),
+                    response.getEmail(),
+                    response.getRole(),
+                    response.getPhone(),
+                    response.getAddress()
+            );
+
+            if (UserSession.getInstance().isAdmin()) {
+                new AdminFrame().setVisible(true);
+            } else {
+                new MainFrame().setVisible(true);
+            }
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        }
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new LoginFrame().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

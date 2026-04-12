@@ -30,6 +30,12 @@ public class CategoryService {
         return categoryRepository.save(category);
     }
 
+    public Category updateCategory(Category category) {
+        Objects.requireNonNull(category, "Category cannot be null");
+        Objects.requireNonNull(category.getId(), "Category ID cannot be null");
+        return categoryRepository.save(category);
+    }
+
     public void deleteCategory(Long id) {
         Objects.requireNonNull(id, "ID cannot be null");
         categoryRepository.deleteById(id);

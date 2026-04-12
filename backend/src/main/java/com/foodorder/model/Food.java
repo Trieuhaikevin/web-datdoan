@@ -39,7 +39,11 @@ public class Food {
     @Column(nullable = false)
     private BigDecimal price;
 
+    @Column(nullable = false)
     private boolean available = true;
+
+    @Column(nullable = false)
+    private Integer stockQuantity = 0;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

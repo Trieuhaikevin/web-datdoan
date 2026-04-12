@@ -3,12 +3,8 @@ package com.foodorder.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,41 +18,52 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
+import com.foodorder.client.ApiClient;
+import com.foodorder.model.CartItem;
+import com.foodorder.model.CartStore;
+import com.foodorder.model.CreateOrderItemRequestModel;
+import com.foodorder.model.CreateOrderRequestModel;
+import com.foodorder.model.OrderModel;
+import com.foodorder.model.UserSession;
+
 public class OrderFrame extends JFrame {
+    private final ApiClient apiClient = new ApiClient();
+    private final CartStore cartStore = CartStore.getInstance();
+    private final DecimalFormat moneyFormat = new DecimalFormat("#,##0");
+
     private JTable orderTable;
     private JLabel totalLabel;
     private JButton orderButton;
     private JButton removeButton;
     private DefaultTableModel model;
-    public static final String CART_FILE = System.getProperty("user.home") + File.separator + "foodorder_cart.txt";
-    private final List<String[]> cartItems = new ArrayList<>();
+    private final List<CartItem> cartItems = new ArrayList<>();
 
     public OrderFrame() {
         setTitle("Đặt Đồ Ăn Online - Giỏ Hàng");
-        setSize(600, 400);
+        setSize(700, 420);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
-        loadCart();
+        refreshCartItems();
         initComponents();
+        refreshTable();
     }
 
     private void initComponents() {
-        // Table
         String[] columns = {"Món ăn", "Đơn giá", "Số lượng", "Thành tiền"};
-        model = new DefaultTableModel(columns, 0);
-        for (String[] item : cartItems) {
-            model.addRow(item);
-        }
+        model = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         orderTable = new JTable(model);
         JScrollPane scrollPane = new JScrollPane(orderTable);
 
-        // Bottom panel
         JPanel bottomPanel = new JPanel(new BorderLayout());
         totalLabel = new JLabel("Tổng tiền: 0đ");
         totalLabel.setFont(new Font("Arial", Font.BOLD, 16));
         totalLabel.setForeground(new Color(255, 87, 34));
-        updateTotal();
 
         JPanel buttonPanel = new JPanel();
         removeButton = new JButton("Xóa Item");
@@ -68,13 +75,7 @@ public class OrderFrame extends JFrame {
         orderButton.setBackground(new Color(255, 87, 34));
         orderButton.setForeground(Color.WHITE);
         orderButton.setFont(new Font("Arial", Font.BOLD, 14));
-
-        orderButton.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, 
-                "Đặt hàng thành công! 🎉\nĐơn hàng của bạn đang được xử lý.");
-            clearCart();
-            dispose();
-        });
+        orderButton.addActionListener(e -> placeOrder());
 
         buttonPanel.add(removeButton);
         buttonPanel.add(orderButton);
@@ -87,71 +88,92 @@ public class OrderFrame extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
+    private void refreshCartItems() {
+        cartItems.clear();
+        cartItems.addAll(cartStore.getItems());
+    }
+
+    private void refreshTable() {
+        model.setRowCount(0);
+        for (CartItem item : cartItems) {
+            model.addRow(new Object[]{
+                    item.getFoodName(),
+                    formatMoney(item.getUnitPrice()),
+                    item.getQuantity(),
+                    formatMoney(item.getSubtotal())
+            });
+        }
+        updateTotal();
+    }
+
     private void removeSelectedItem() {
         int selectedRow = orderTable.getSelectedRow();
-        if (selectedRow != -1) {
-            model.removeRow(selectedRow);
-            cartItems.remove(selectedRow);
-            saveCart();
-            updateTotal();
-        } else {
+        if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một item để xóa!");
+            return;
+        }
+
+        CartItem item = cartItems.get(selectedRow);
+        cartStore.removeByFoodId(item.getFoodId());
+        refreshCartItems();
+        refreshTable();
+    }
+
+    private void placeOrder() {
+        if (cartStore.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Giỏ hàng đang trống!");
+            return;
+        }
+
+        UserSession session = UserSession.getInstance();
+        if (!session.isLoggedIn()) {
+            JOptionPane.showMessageDialog(this, "Bạn cần đăng nhập lại để đặt hàng.");
+            return;
+        }
+
+        String defaultAddress = session.getAddress() == null ? "" : session.getAddress();
+        String deliveryAddress = JOptionPane.showInputDialog(this, "Nhập địa chỉ giao hàng:", defaultAddress);
+        if (deliveryAddress == null) {
+            return;
+        }
+        if (deliveryAddress.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Địa chỉ giao hàng không được để trống!");
+            return;
+        }
+
+        List<CreateOrderItemRequestModel> items = cartStore.getItems().stream()
+                .map(item -> new CreateOrderItemRequestModel(item.getFoodId(), item.getQuantity()))
+                .toList();
+
+        CreateOrderRequestModel request = new CreateOrderRequestModel(
+                session.getUserId(),
+                deliveryAddress.trim(),
+                items
+        );
+
+        try {
+            OrderModel createdOrder = apiClient.post("/orders", request, OrderModel.class);
+            String orderCode = createdOrder != null && createdOrder.getId() != null
+                    ? "#" + createdOrder.getId()
+                    : "";
+            JOptionPane.showMessageDialog(this,
+                    "Đặt hàng thành công!\nMã đơn: " + orderCode);
+            cartStore.clear();
+            refreshCartItems();
+            refreshTable();
+            dispose();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage());
         }
     }
 
     private void updateTotal() {
-        // Tính tổng tiền (đơn giản, giả sử tất cả là số)
-        double total = 0;
-        for (int i = 0; i < model.getRowCount(); i++) {
-            String priceStr = (String) model.getValueAt(i, 3);
-            priceStr = priceStr.replace("đ", "").replace(",", "");
-            try {
-                total += Double.parseDouble(priceStr);
-            } catch (NumberFormatException e) {
-                // Ignore
-            }
-        }
-        totalLabel.setText("Tổng tiền: " + String.format("%,.0f", total) + "đ");
+        BigDecimal total = cartStore.getTotal();
+        totalLabel.setText("Tổng tiền: " + formatMoney(total));
     }
 
-    private void loadCart() {
-        cartItems.clear();
-        try (BufferedReader reader = new BufferedReader(new FileReader(CART_FILE))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("\\|");
-                if (parts.length == 4) {
-                    cartItems.add(parts);
-                } else {
-                    String[] fallback = line.split(",");
-                    if (fallback.length >= 4) {
-                        String name = fallback[0];
-                        String quantity = fallback[fallback.length - 2];
-                        String total = fallback[fallback.length - 1];
-                        String price = String.join(",", java.util.Arrays.copyOfRange(fallback, 1, fallback.length - 2));
-                        cartItems.add(new String[]{name, price, quantity, total});
-                    }
-                }
-            }
-        } catch (IOException e) {
-            // File not found or error, use default
-        }
-    }
-
-    private void saveCart() {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(CART_FILE))) {
-            for (String[] item : cartItems) {
-                writer.println(String.join("|", item));
-            }
-        } catch (IOException e) {
-            // Ignore save errors
-        }
-    }
-
-    private void clearCart() {
-        cartItems.clear();
-        model.setRowCount(0);
-        saveCart();
-        updateTotal();
+    private String formatMoney(BigDecimal value) {
+        BigDecimal normalized = value == null ? BigDecimal.ZERO : value;
+        return moneyFormat.format(normalized) + "đ";
     }
 }
