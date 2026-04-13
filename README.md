@@ -653,10 +653,10 @@ Dự án này tuân theo các quy tắc thiết kế hướng đối tượng (O
 - Build: Maven, Java 21+
 
 **Tác giả & Nhóm**:
-- 👨‍💻 **Phát triển**: Team FoodOrder Project
-- 📧 **Email**: support@foodorder.local
-- 🌐 **Website**: (Pending)
-- 📱 **Phone**: (Pending)
+- **Nhóm Phát triển**: Nhóm 7
+- **Họ và tên**: Hoàng Hải Triều
+- **Email**: haitrieuhoang0312@gmail.com
+- **Mã sinh viên**: B22DCVT557
 
 **Đóng góp**:
 Nếu bạn muốn đóng góp hoặc báo cáo lỗi:
@@ -666,25 +666,8 @@ Nếu bạn muốn đóng góp hoặc báo cáo lỗi:
 4. Push: `git push origin feature/YourFeature`.
 5. Tạo Pull Request.
 
-**License**: MIT (hoặc Apache 2.0 — pending)
 
 **Lời cảm ơn**:
 - Spring Boot team cho framework mạnh mẽ.
 - Java Swing community cho UI components.
 - Maven team cho build tool.
-
-**Liên hệ hỗ trợ**:
-- 📞 Hotline: (Pending)
-- 💬 Chat: (Pending)
-- 🐛 Issues: GitHub Issues
-
----
-
-## 📞 Hỗ trợ & Feedback
-
-Nếu bạn muốn mở rộng thêm:
-- Thêm "Reset Notifications" button vào UI.
-- Implement endpoint nhẹ `GET /api/orders/user/{id}/latest-light` chỉ trả `{orderId, status}`.
-- Viết test-plan chi tiết (test cases + step-by-step).
-- Thêm logging / monitoring.
-
