@@ -8,6 +8,8 @@ public class OrderModel {
     private Long userId;
     private String userName;
     private String userEmail;
+    private String receiverName;
+    private String receiverPhone;
     private String deliveryAddress;
     private BigDecimal totalPrice;
     private String status;
@@ -44,6 +46,22 @@ public class OrderModel {
 
     public void setUserEmail(String userEmail) {
         this.userEmail = userEmail;
+    }
+
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
+    }
+
+    public String getReceiverPhone() {
+        return receiverPhone;
+    }
+
+    public void setReceiverPhone(String receiverPhone) {
+        this.receiverPhone = receiverPhone;
     }
 
     public String getDeliveryAddress() {

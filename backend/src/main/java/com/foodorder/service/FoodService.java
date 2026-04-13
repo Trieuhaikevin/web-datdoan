@@ -14,9 +14,12 @@ import com.foodorder.dto.FoodRequest;
 import com.foodorder.dto.FoodResponse;
 import com.foodorder.model.Category;
 import com.foodorder.model.Food;
+import com.foodorder.model.Order;
+import com.foodorder.model.OrderItem;
 import com.foodorder.repository.CategoryRepository;
 import com.foodorder.repository.FoodRepository;
 import com.foodorder.repository.OrderItemRepository;
+import com.foodorder.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +29,7 @@ public class FoodService {
     private final FoodRepository foodRepository;
     private final CategoryRepository categoryRepository;
     private final OrderItemRepository orderItemRepository;
+    private final OrderRepository orderRepository;
 
     public List<FoodResponse> getAllFoods() {
         return foodRepository.findAll().stream()
@@ -84,8 +88,17 @@ public class FoodService {
 
     public void deleteFood(Long id) {
         Objects.requireNonNull(id, "ID cannot be null");
-        if (orderItemRepository.existsByFood_IdAndOrderNotDelivered(id)) {
-            throw new ResponseStatusException(BAD_REQUEST, "Không thể xóa món ăn này vì còn có đơn hàng chưa giao chứa nó");
+
+        var orderItems = orderItemRepository.findAllByFoodId(id);
+        for (OrderItem orderItem : orderItems) {
+            Order order = orderItem.getOrder();
+            if (order != null) {
+                if (order.getStatus() == Order.Status.PENDING || order.getStatus() == Order.Status.CONFIRMED) {
+                    order.setStatus(Order.Status.CANCELLED);
+                }
+                orderItem.setFood(null);
+                orderRepository.save(order);
+            }
         }
         foodRepository.deleteById(id);
     }
@@ -100,7 +113,8 @@ public class FoodService {
 
     private void applyRequest(Food food, FoodRequest request) {
         int normalizedStock = normalizeStockQuantity(request.stockQuantity());
-        boolean available = request.available() != null ? request.available() : food.isAvailable();
+        Boolean requestedAvailable = request.available();
+        boolean available = requestedAvailable != null ? requestedAvailable : food.isAvailable();
 
         food.setName(request.name().trim());
         food.setDescription(hasText(request.description()) ? request.description().trim() : null);

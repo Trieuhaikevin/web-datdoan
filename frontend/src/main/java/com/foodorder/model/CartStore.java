@@ -22,13 +22,20 @@ public class CartStore {
     }
 
     public synchronized void addOrIncrease(FoodModel food) {
+        addOrIncrease(food, 1);
+    }
+
+    public synchronized void addOrIncrease(FoodModel food, int quantity) {
+        if (quantity <= 0) {
+            return;
+        }
         for (CartItem item : items) {
             if (item.getFoodId().equals(food.getId())) {
-                item.setQuantity(item.getQuantity() + 1);
+                item.setQuantity(item.getQuantity() + quantity);
                 return;
             }
         }
-        items.add(new CartItem(food.getId(), food.getName(), food.getPrice(), 1));
+        items.add(new CartItem(food.getId(), food.getName(), food.getPrice(), quantity));
     }
 
     public synchronized void removeByFoodId(Long foodId) {

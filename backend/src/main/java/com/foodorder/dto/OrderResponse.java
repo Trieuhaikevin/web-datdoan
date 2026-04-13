@@ -9,6 +9,8 @@ public record OrderResponse(
         Long userId,
         String userName,
         String userEmail,
+        String receiverName,
+        String receiverPhone,
         String deliveryAddress,
         BigDecimal totalPrice,
         String status,

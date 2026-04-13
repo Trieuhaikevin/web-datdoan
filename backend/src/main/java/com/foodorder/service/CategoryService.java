@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.foodorder.model.Category;
 import com.foodorder.repository.CategoryRepository;
+import com.foodorder.repository.FoodRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
+    private final FoodRepository foodRepository;
 
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
@@ -38,6 +40,13 @@ public class CategoryService {
 
     public void deleteCategory(Long id) {
         Objects.requireNonNull(id, "ID cannot be null");
+
+        var foods = foodRepository.findByCategory_Id(id);
+        for (var food : foods) {
+            food.setCategory(null);
+        }
+        foodRepository.saveAll(foods);
+
         categoryRepository.deleteById(id);
     }
 }

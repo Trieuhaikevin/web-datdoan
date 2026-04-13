@@ -585,6 +585,8 @@ public class AdminFrame extends JFrame {
         builder.append("Mã đơn: ").append(selectedOrder.getId()).append("\n");
         builder.append("Khách hàng: ").append(selectedOrder.getUserName()).append("\n");
         builder.append("Email: ").append(selectedOrder.getUserEmail()).append("\n");
+        builder.append("Người nhận: ").append(selectedOrder.getReceiverName() == null ? "" : selectedOrder.getReceiverName()).append("\n");
+        builder.append("SĐT người nhận: ").append(selectedOrder.getReceiverPhone() == null ? "" : selectedOrder.getReceiverPhone()).append("\n");
         builder.append("Địa chỉ: ").append(selectedOrder.getDeliveryAddress()).append("\n");
         builder.append("Trạng thái: ").append(selectedOrder.getStatus()).append("\n");
         builder.append("Ngày tạo: ").append(formatDateTime(selectedOrder.getCreatedAt())).append("\n");

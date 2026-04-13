@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,9 +26,6 @@ import com.foodorder.repository.OrderRepository;
 import com.foodorder.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
-
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +56,13 @@ public class OrderService {
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<OrderResponse> getLatestOrderByUser(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        return orderRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+                .map(this::toResponse);
+    }
+
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
         validateCreateOrderRequest(request);
@@ -66,6 +72,8 @@ public class OrderService {
 
         Order order = new Order();
         order.setUser(user);
+        order.setReceiverName(request.receiverName().trim());
+        order.setReceiverPhone(request.receiverPhone().trim());
         order.setDeliveryAddress(request.deliveryAddress().trim());
         order.setStatus(Order.Status.PENDING);
 
@@ -95,12 +103,6 @@ public class OrderService {
 
             BigDecimal subtotal = food.getPrice().multiply(BigDecimal.valueOf(itemRequest.quantity()));
             totalPrice = totalPrice.add(subtotal);
-
-            int remainingStock = food.getStockQuantity() - itemRequest.quantity();
-            food.setStockQuantity(remainingStock);
-            if (remainingStock == 0) {
-                food.setAvailable(false);
-            }
         }
 
         order.setOrderItems(orderItems);
@@ -116,7 +118,54 @@ public class OrderService {
         Objects.requireNonNull(status, "Status cannot be null");
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Không tìm thấy đơn hàng"));
+
+        Order.Status currentStatus = order.getStatus();
+        if (currentStatus == status) {
+            return toResponse(order);
+        }
+
+        if (status == Order.Status.CANCELLED) {
+            if (currentStatus != Order.Status.PENDING && currentStatus != Order.Status.CONFIRMED) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Chỉ có thể hủy đơn khi trạng thái là pending hoặc confirmed");
+            }
+            order.setStatus(status);
+            return toResponse(orderRepository.save(order));
+        }
+
+        if (status == Order.Status.DELIVERING || status == Order.Status.DELIVERED) {
+            if (currentStatus != Order.Status.DELIVERING && currentStatus != Order.Status.DELIVERED) {
+                deductStockForOrder(order);
+            }
+            order.setStatus(status);
+            return toResponse(orderRepository.save(order));
+        }
+
+        if (status == Order.Status.CONFIRMED || status == Order.Status.PENDING) {
+            if (currentStatus == Order.Status.DELIVERED) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Không thể chuyển trạng thái từ delivered sang trạng thái khác");
+            }
+            order.setStatus(status);
+            return toResponse(orderRepository.save(order));
+        }
+
         order.setStatus(status);
+        return toResponse(orderRepository.save(order));
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(Long id) {
+        Objects.requireNonNull(id, "ID cannot be null");
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Không tìm thấy đơn hàng"));
+
+        if (order.getStatus() != Order.Status.PENDING && order.getStatus() != Order.Status.CONFIRMED) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Chỉ có thể hủy đơn khi trạng thái là pending hoặc confirmed");
+        }
+
+        order.setStatus(Order.Status.CANCELLED);
         return toResponse(orderRepository.save(order));
     }
 
@@ -126,7 +175,11 @@ public class OrderService {
     }
 
     private void validateCreateOrderRequest(CreateOrderRequest request) {
-        if (request == null || request.userId() == null || !StringUtils.hasText(request.deliveryAddress())) {
+        if (request == null
+                || request.userId() == null
+                || !StringUtils.hasText(request.receiverName())
+                || !StringUtils.hasText(request.receiverPhone())
+                || !StringUtils.hasText(request.deliveryAddress())) {
             throw new ResponseStatusException(BAD_REQUEST, "Thiếu thông tin đơn hàng");
         }
         if (request.items() == null || request.items().isEmpty()) {
@@ -151,6 +204,8 @@ public class OrderService {
                 user != null ? user.getId() : null,
                 user != null ? user.getFullName() : null,
                 user != null ? user.getEmail() : null,
+                order.getReceiverName(),
+                order.getReceiverPhone(),
                 order.getDeliveryAddress(),
                 order.getTotalPrice(),
                 order.getStatus().name(),
@@ -164,10 +219,40 @@ public class OrderService {
         BigDecimal subtotal = price.multiply(BigDecimal.valueOf(item.getQuantity()));
         return new OrderItemResponse(
                 item.getFood() != null ? item.getFood().getId() : null,
-                item.getFood() != null ? item.getFood().getName() : null,
+                item.getFood() != null ? item.getFood().getName() : "Món đã xóa",
                 item.getQuantity(),
                 price,
                 subtotal
         );
+    }
+
+    private void deductStockForOrder(Order order) {
+        if (order.getOrderItems() == null) {
+            return;
+        }
+        List<Food> updated = new ArrayList<>();
+        for (OrderItem orderItem : order.getOrderItems()) {
+            Food food = orderItem.getFood();
+            if (food == null) {
+                continue;
+            }
+            Integer availableObj = food.getStockQuantity();
+            int available = availableObj == null ? 0 : availableObj;
+            int requested = orderItem.getQuantity();
+            if (available < requested) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Không đủ tồn kho để chuyển đơn hàng sang trạng thái " + order.getStatus().name());
+            }
+            int remaining = available - requested;
+            food.setStockQuantity(remaining);
+            if (remaining <= 0) {
+                food.setAvailable(false);
+            }
+            updated.add(food);
+        }
+
+        if (!updated.isEmpty()) {
+            foodRepository.saveAll(updated);
+        }
     }
 }

@@ -43,6 +43,8 @@ public class Order {
     private List<OrderItem> orderItems;
 
     private String deliveryAddress;
+    private String receiverName;
+    private String receiverPhone;
     private BigDecimal totalPrice;
 
     @Enumerated(EnumType.STRING)
