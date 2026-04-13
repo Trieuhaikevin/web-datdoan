@@ -1,0 +1,12 @@
+# Compiled files
+*.class
+target/
+*.lst
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

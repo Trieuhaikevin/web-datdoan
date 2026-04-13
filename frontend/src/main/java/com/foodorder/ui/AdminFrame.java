@@ -32,8 +32,8 @@ import com.foodorder.model.FoodModel;
 import com.foodorder.model.FoodRequestModel;
 import com.foodorder.model.OrderItemModel;
 import com.foodorder.model.OrderModel;
-import com.foodorder.model.UserSession;
 import com.foodorder.model.UserModel;
+import com.foodorder.model.UserSession;
 
 public class AdminFrame extends JFrame {
     private final ApiClient apiClient = new ApiClient();
@@ -801,7 +801,7 @@ public class AdminFrame extends JFrame {
             newUser.setAddress(trimToNull(addressField.getText()));
             newUser.setPassword(passwordField.getText());
 
-            apiClient.post("/users/register", newUser, UserModel.class);
+            apiClient.post("/users", newUser, UserModel.class);
             refreshUsers();
             JOptionPane.showMessageDialog(this, "Thêm user thành công!");
         } catch (Exception e) {

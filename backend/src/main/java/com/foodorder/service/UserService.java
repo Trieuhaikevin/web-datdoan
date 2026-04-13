@@ -48,6 +48,12 @@ public class UserService {
         }
 
         user.setEmail(normalizeEmail(user.getEmail()));
+        
+        // Check if email already exists
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new IllegalArgumentException("Email đã tồn tại");
+        }
+        
         if (user.getRole() == null) {
             user.setRole(User.Role.USER);
         }
