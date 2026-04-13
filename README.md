@@ -14,11 +14,13 @@
 4. [🔌 API Endpoints](#-api-endpoints)
 5. [📝 Chi Tiết Chức Năng](#-chi-tiết-chức-năng)
 6. [⚙️ Hướng Dẫn Cài Đặt và Chạy](#️-hướng-dẫn-cài-đặt-và-chạy)
-7. [🏗️ Áp Dụng Nguyên Tắc OOP](#️-áp-dụng-nguyên-tắc-oop)
-8. [Kiểm thử](#6-kiểm-thử-manual)
-9. [Vận hành & Mở rộng](#7-vận-hành--mở-rộng)
-10. [Troubleshooting](#8-troubleshooting)
-11. [👨‍💻 Tác Giả & Liên hệ](#-tác-giả--liên-hệ)
+7. [💻 Frontend Components](#-frontend-components--behavior)
+8. [📊 Data Model](#-data-model-entities)
+9. [✅ Kiểm thử](#-kiểm-thử-manual)
+10. [🚀 Vận hành & Mở rộng](#-vận-hành--mở-rộng)
+11. [🔧 Troubleshooting](#-troubleshooting)
+12. [🏗️ Áp Dụng Nguyên Tắc OOP](#️-áp-dụng-nguyên-tắc-oop)
+13. [👨‍💻 Tác Giả & Liên hệ](#-tác-giả--liên-hệ)
 
 ---
 
@@ -366,7 +368,7 @@ DELETE /api/users/{id}         (admin)
 
 ---
 
-## 3. Frontend Components & Behavior
+## 💻 Frontend Components & Behavior
 
 - **LoginFrame**: Đăng nhập / Đăng ký tài khoản.
   - Lưu session vào `UserSession` singleton.
@@ -405,7 +407,7 @@ DELETE /api/users/{id}         (admin)
 
 ---
 
-## 4. Data Model (Entities)
+## 📊 Data Model (Entities)
 
 ### User
 ```java
@@ -498,7 +500,7 @@ java -cp target/classes;target/lib/* com.foodorder.client.LoginFrame
 
 ---
 
-## 6. Kiểm thử (Manual)
+## ✅ Kiểm thử (Manual)
 
 ### Test Case 1: Đăng ký & Đăng nhập
 1. Chạy frontend → Login window.
@@ -547,7 +549,7 @@ java -cp target/classes;target/lib/* com.foodorder.client.LoginFrame
 
 ---
 
-## 7. Vận hành & Mở rộng
+## 🚀 Vận hành & Mở rộng
 
 ### Hiện tại
 - **Notifications**: polling mỗi 10s via `GET /api/orders/user/{id}/latest`.
@@ -568,7 +570,7 @@ java -cp target/classes;target/lib/* com.foodorder.client.LoginFrame
 
 ---
 
-## 8. Troubleshooting
+## 🔧 Troubleshooting
 
 ### Frontend không build
 - **Giải pháp**: Kiểm tra Maven ở PATH (`mvn --version`).
